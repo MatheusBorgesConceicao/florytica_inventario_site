@@ -1,0 +1,7 @@
+streamlit
+pandas
+numpy
+openpyxl
+python-docx
+matplotlib
+pyarrow==21.0.0

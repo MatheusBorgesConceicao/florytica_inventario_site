@@ -1,0 +1,7 @@
+[theme]
+base = "dark"
+primaryColor = "#13A66B"              # Verde Florytica
+backgroundColor = "#0B0F0D"           # Fundo principal
+secondaryBackgroundColor = "#141A16"  # Cards / sidebar
+textColor = "#E6F2EC"                 # Texto
+font = "sans serif"

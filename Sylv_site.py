@@ -1,11 +1,11 @@
-# Florytica_Site.py
+# Sylv_Site.py
 # ─────────────────────────────────────────────────────────────────────────────
 # App Streamlit para processamento de inventário florestal
 # - Usa SEMPRE Hc (altura comercial) no cálculo de volume
 # - Calcula DAP a partir de CAP/π quando DAP não existir
 # - Área basal (g) em m²
 # - Exporta resultado e resumo por nível
-# - Tema e logo da Florytica
+# - Branding Sylv (título, logo, cabeçalho)
 # ─────────────────────────────────────────────────────────────────────────────
 
 import io
@@ -14,14 +14,14 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-APP_TITLE = "Florytica Inventário — Processamento Completo"
-LOGO_PATH = "assets/logo_florytica.png"   # coloque sua imagem aqui (PNG/SVG)
+APP_TITLE = "Sylv Inventário — Processamento Completo"
+LOGO_PATH = "assets/sylv_logo.png"   # coloque sua imagem aqui (PNG/SVG)
 
 # -----------------------------------------------------------------------------
-# Configuração de página + tema + logo
+# Configuração de página + branding
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Florytica Inventário",
+    page_title="Sylv Inventário",
     page_icon=LOGO_PATH if LOGO_PATH else "🌳",
     layout="wide",
 )
@@ -31,26 +31,30 @@ try:
     st.logo(LOGO_PATH, size="large")
 except Exception:
     # fallback se st.logo indisponível
-    st.image(LOGO_PATH, width=64)
+    try:
+        st.image(LOGO_PATH, width=64)
+    except Exception:
+        st.write(":deciduous_tree: ")
 
+# Cabeçalho
 st.markdown(
     f"""
-    <h1 style="margin-top:-6px; font-weight:800;">
-      Florytica Inventário — Processamento Completo
-    </h1>
-    <p style="opacity:0.8;margin-top:-8px;">
-      Versão 3.0 — Processa DAP (via DAP ou CAP/π), g, Volume (com Hc), Escore Z (opcional) e Indicadores por Nível.
-    </p>
+    <div style="margin-top:-6px">
+      <h1 style="font-weight:800; margin-bottom:0">{APP_TITLE}</h1>
+      <p style="opacity:0.8; margin-top:4px">Versão 3.0 — Processa DAP (via DAP ou CAP/π), g, Volume (com Hc), Escore Z (opcional) e Indicadores por Nível.</p>
+    </div>
     """,
     unsafe_allow_html=True,
 )
 
 # -----------------------------------------------------------------------------
-# Sidebar — parâmetros simples (mantido tradicional e direto)
+# Sidebar — parâmetros
 # -----------------------------------------------------------------------------
 with st.sidebar:
     st.subheader("Parâmetros")
-    area_imovel_ha = st.number_input("Área total do imóvel (ha)", min_value=0.0, step=0.01, value=0.0, format="%.2f")
+    area_imovel_ha = st.number_input(
+        "Área total do imóvel (ha)", min_value=0.0, step=0.01, value=0.0, format="%.2f"
+    )
 
 # -----------------------------------------------------------------------------
 # Ajuda rápida
@@ -64,7 +68,9 @@ with st.expander("Como usar", expanded=False):
         4) Saída com **DAP (cm)**, **g_m2 (m²)** e **Vol_Hc_m3 (m³)**, além de resumos por **Nível**.
         """
     )
-    st.info("Colunas esperadas (nomes insensíveis a maiúsculas/minúsculas): **Hc** obrigatório; **DAP** ou **CAP**; opcional **Nível**, **Espécie**, **PF**.")
+    st.info(
+        "Colunas esperadas (nomes insensíveis a maiúsculas/minúsculas): **Hc** obrigatório; **DAP** ou **CAP**; opcional **Nível**, **Espécie**, **PF**."
+    )
 
 # -----------------------------------------------------------------------------
 # Upload
@@ -75,6 +81,7 @@ file = st.file_uploader("Arraste/solte ou clique em 'Browse files'", type=["xlsx
 # -----------------------------------------------------------------------------
 # Funções utilitárias
 # -----------------------------------------------------------------------------
+
 def _first_sheet_or_named(df_dict: dict, preferred_names=("Dados_Básicos", "dados_básicos", "dados_basicos")) -> pd.DataFrame:
     """Retorna o DataFrame da primeira planilha ou uma com nome preferido, se existir."""
     for name in preferred_names:
@@ -85,8 +92,10 @@ def _first_sheet_or_named(df_dict: dict, preferred_names=("Dados_Básicos", "dad
     first_key = list(df_dict.keys())[0]
     return df_dict[first_key]
 
+
 def _to_float(series):
     return pd.to_numeric(series, errors="coerce")
+
 
 def process_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
     """Valida colunas, padroniza e calcula DAP, g e Volume com Hc."""
@@ -99,10 +108,10 @@ def process_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
 
     col_cap = lower_map.get("cap")
     col_dap = lower_map.get("dap")
-    col_hc  = lower_map.get("hc")
+    col_hc = lower_map.get("hc")
     col_niv = lower_map.get("nível") or lower_map.get("nivel")
     col_esp = lower_map.get("espécie") or lower_map.get("especie")
-    col_pf  = lower_map.get("pf")
+    col_pf = lower_map.get("pf")
 
     # Regras
     if not col_hc:
@@ -139,9 +148,12 @@ def process_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
     df["Vol_Hc_m3"] = 1.3332 * ((df["DAP"] / 100.0) ** 2.0836) * (df["Hc"] ** 0.732)
 
     # Metadados úteis (se existirem)
-    if col_niv: df["Nível"]   = df[col_niv]
-    if col_esp: df["Espécie"] = df[col_esp]
-    if col_pf:  df["PF"]      = df[col_pf]
+    if col_niv:
+        df["Nível"] = df[col_niv]
+    if col_esp:
+        df["Espécie"] = df[col_esp]
+    if col_pf:
+        df["PF"] = df[col_pf]
 
     # Ordena colunas principais primeiro
     cols_first = ["PF", "Nível", "Espécie", "DAP", "Hc", "g_m2", "Vol_Hc_m3"]
@@ -150,16 +162,19 @@ def process_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+
 def resumo_por_nivel(df: pd.DataFrame) -> pd.DataFrame:
     """Resumo por nível: n árvores, somas e médias básicas."""
     if "Nível" not in df.columns:
         # Se não existir "Nível", faz um resumo geral
-        res = pd.DataFrame({
-            "n_indivíduos": [df.shape[0]],
-            "DAP_médio_cm": [df["DAP"].mean()],
-            "g_total_m2": [df["g_m2"].sum()],
-            "Vol_total_m3": [df["Vol_Hc_m3"].sum()],
-        })
+        res = pd.DataFrame(
+            {
+                "n_indivíduos": [df.shape[0]],
+                "DAP_médio_cm": [df["DAP"].mean()],
+                "g_total_m2": [df["g_m2"].sum()],
+                "Vol_total_m3": [df["Vol_Hc_m3"].sum()],
+            }
+        )
         res.index = ["Geral"]
         return res.reset_index(names="Nível/Grupo")
 
@@ -171,6 +186,7 @@ def resumo_por_nivel(df: pd.DataFrame) -> pd.DataFrame:
         Vol_total_m3=("Vol_Hc_m3", "sum"),
     ).reset_index()
     return res
+
 
 def download_xlsx(dfs: dict, filename: str) -> bytes:
     """Cria um .xlsx em memória com várias abas."""
@@ -207,8 +223,8 @@ if file:
     with col_b:
         st.subheader("Indicadores gerais")
         vol_total = df_proc["Vol_Hc_m3"].sum()
-        g_total   = df_proc["g_m2"].sum()
-        dap_med   = df_proc["DAP"].mean()
+        g_total = df_proc["g_m2"].sum()
+        dap_med = df_proc["DAP"].mean()
         st.metric("Volume total (m³)", f"{vol_total:,.3f}")
         st.metric("Área basal total (m²)", f"{g_total:,.3f}")
         st.metric("DAP médio (cm)", f"{dap_med:,.2f}")
@@ -221,14 +237,15 @@ if file:
             "Dados_processados": df_proc,
             "Resumo_por_nivel": res_nivel,
         },
-        filename="Florytica_Processado.xlsx",
+        filename="Sylv_Processado.xlsx",
     )
     st.download_button(
         label="⬇️ Baixar Excel (processado)",
         data=xlsx_bytes,
-        file_name="Florytica_Processado.xlsx",
+        file_name="Sylv_Processado.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
 else:
     st.info("Envie a planilha de dados para iniciar o processamento.")
+
